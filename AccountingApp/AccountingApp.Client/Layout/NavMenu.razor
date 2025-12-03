@@ -1,0 +1,92 @@
+﻿@using AccountingApp.Client.Services
+@implements IDisposable
+
+@* <link rel="stylesheet" href="cdn.jsdelivr.net"> *@
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">AccountingApp</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+
+        @* <div class="nav-item px-3">
+            <NavLink class="nav-link" href="counter">
+                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
+            </NavLink>
+        </div> *@
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="entry/new">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> New Entry
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="ledger">
+                <span class="bi bi-list-columns-reverse" aria-hidden="true"></span> Ledger
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="general-journal">
+                <span class="bi bi-journal-text" aria-hidden="true"></span> General Journal
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="trial-balance">
+                <i class="bi bi-calculator" aria-hidden="true"></i> Trial Balance
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="chart-of-accounts">
+                <span class="bi bi-folder2-open" aria-hidden="true"></span> Chart of Accounts
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="cart">
+                <span class="bi bi-cart" aria-hidden="true"></span> Cart
+                @if (State.TotalCount > 0)
+                {
+                    <span class="badge bg-danger ms-2 rounded-pill">@State.TotalCount</span>
+                }
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="orders">
+                <span class="bi bi-receipt" aria-hidden="true"></span> Orders
+            </NavLink>
+        </div>
+    </nav>
+</div>
+
+@code {
+    // Receive the state via Cascading Parameter
+    [CascadingParameter] public CartState State { get; set; } = null!;
+
+    protected override void OnInitialized()
+    {
+        // Subscribe to changes so the badge updates immediately
+        State.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        // Always unsubscribe to prevent memory leaks
+        State.OnChange -= StateHasChanged;
+    }
+}
+

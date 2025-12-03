@@ -1,0 +1,68 @@
+﻿@page "/trial-balance"
+@using AccountingApp.Shared.Models
+@inject HttpClient Http
+
+<h3>Trial Balance</h3>
+<p class="text-muted">As of @DateTime.Now.ToShortDateString()</p>
+
+@if (items == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>Account Name</th>
+                <th>Type</th>
+                <th class="text-end">Debit</th>
+                <th class="text-end">Credit</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in items)
+            {
+                <tr>
+                    <td>@item.AccountName</td>
+                    <td><span class="badge bg-secondary">@item.AccountType</span></td>
+                    <td class="text-end">
+                        @(item.DebitBalance != 0 ? item.DebitBalance.ToString("N2") : "")
+                    </td>
+                    <td class="text-end">
+                        @(item.CreditBalance != 0 ? item.CreditBalance.ToString("N2") : "")
+                    </td>
+                </tr>
+            }
+        </tbody>
+        <tfoot class="fw-bold fs-5">
+            <tr class="@(IsBalanced ? "table-success" : "table-danger")">
+                <td colspan="2">Total</td>
+                <td class="text-end">@TotalDebits.ToString("N2")</td>
+                <td class="text-end">@TotalCredits.ToString("N2")</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    @if (!IsBalanced)
+    {
+        <div class="alert alert-danger">
+            <strong>Warning:</strong> The Trial Balance is out of balance by @((TotalDebits - TotalCredits).ToString("N2"))!
+            Please check your journal entries.
+        </div>
+    }
+}
+
+@code {
+    private List<TrialBalanceItem>? items;
+
+    // Computed Properties for Totals
+    private decimal TotalDebits => items?.Sum(i => i.DebitBalance) ?? 0;
+    private decimal TotalCredits => items?.Sum(i => i.CreditBalance) ?? 0;
+    private bool IsBalanced => TotalDebits == TotalCredits;
+
+    protected override async Task OnInitializedAsync()
+    {
+        items = await Http.GetFromJsonAsync<List<TrialBalanceItem>>("api/Reports/trial-balance");
+    }
+}

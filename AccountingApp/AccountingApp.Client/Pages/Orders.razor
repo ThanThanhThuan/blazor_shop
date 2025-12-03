@@ -1,0 +1,72 @@
+﻿@page "/orders"
+@using AccountingApp.Shared.Models
+@inject HttpClient Http
+
+<h3>Order History</h3>
+
+@if (orders == null)
+{
+    <p><em>Loading orders...</em></p>
+}
+else if (orders.Count == 0)
+{
+    <div class="alert alert-info">No orders found.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped">
+            <thead class="table-dark">
+                <tr>
+                    <th>Order ID</th>
+                    <th>Date</th>
+                    <th>Items</th>
+                    <th class="text-end">Total Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var order in orders)
+                {
+                    <tr>
+                        <td>#@order.Id</td>
+                        <td>@order.OrderDate.ToString("g")</td> <!-- 'g' = General Date/Time -->
+                        <td>
+                            <!-- Nested List for Details -->
+                            <ul class="mb-0 ps-3">
+                                @foreach (var item in order.Items)
+                                {
+                                    <li>
+                                        <strong>@item.Product?.Name</strong>
+                                        x @item.Quantity
+                                        <span class="text-muted">(@item.UnitPrice.ToString("C"))</span>
+                                    </li>
+                                }
+                            </ul>
+                        </td>
+                        <td class="text-end fw-bold">
+                            @order.TotalAmount.ToString("C")
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<Order>? orders;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            orders = await Http.GetFromJsonAsync<List<Order>>("api/Orders");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading orders: {ex.Message}");
+            // Initialize empty list to avoid null reference in UI if API fails
+            orders = new List<Order>();
+        }
+    }
+}

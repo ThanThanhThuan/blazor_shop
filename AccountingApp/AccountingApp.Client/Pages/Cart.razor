@@ -1,0 +1,108 @@
+﻿@page "/cart"
+@using AccountingApp.Shared.Models
+@using AccountingApp.Client.Services
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject IToastService ToastService // <--- Inject Toast Service
+@implements IDisposable
+
+<h3>Your Shopping Cart</h3>
+
+@if (isProcessing)
+{
+    <div class="alert alert-info">Processing your order...</div>
+}
+else if (State.Items.Count == 0)
+{
+    <div class="alert alert-info">Your cart is empty. <a href="shop">Go Shopping!</a></div>
+}
+else
+{
+    <table class="table align-middle">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Price</th>
+                <th>Qty</th>
+                <th>Total</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in State.Items)
+            {
+                <tr>
+                    <td>@item.Product.Name</td>
+                    <td>@item.Product.Price.ToString("C")</td>
+                    <td>@item.Quantity</td>
+                    <td>@item.TotalPrice.ToString("C")</td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" @onclick="() => State.RemoveFromCart(item.Product)">
+                            Remove
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr class="fw-bold fs-5">
+                <td colspan="3" class="text-end">Grand Total:</td>
+                <td>@State.TotalAmount.ToString("C")</td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+
+          <div class="d-flex justify-content-end mt-3">
+            <button class="btn btn-success btn-lg" disabled="@isProcessing" @onclick="PlaceOrder">
+                 @(isProcessing ? "Processing..." : "Confirm Order")
+            </button>
+        </div>
+}
+
+@code {
+    [CascadingParameter] public CartState State { get; set; } = null!;
+    private bool isProcessing = false;
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task PlaceOrder()
+    {
+        isProcessing = true;
+
+        var orderPayload = State.Items.Select(i => new OrderDto
+        {
+            ProductId = i.Product.Id,
+            Quantity = i.Quantity
+        }).ToList();
+
+        var response = await Http.PostAsJsonAsync("api/Orders", orderPayload);
+
+        if (response.IsSuccessStatusCode)
+        {
+            await State.ClearCart();
+
+            // Success Toast
+            ToastService.ShowSuccess("Order placed successfully! Thank you.");
+
+            Nav.NavigateTo("/orders");
+        }
+        else
+        {
+            // Error Toast (read the error message from API, e.g., "Not enough stock")
+            var errorMsg = await response.Content.ReadAsStringAsync();
+            ToastService.ShowError($"Order Failed: {errorMsg}");
+
+            isProcessing = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= StateHasChanged;
+    }
+}

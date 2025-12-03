@@ -1,0 +1,65 @@
+﻿@page "/account/edit/{Id:int}"
+@page "/account/new"
+@using AccountingApp.Shared.Models
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<h3>@(Id == 0 ? "Create New Account" : "Edit Account")</h3>
+
+<EditForm Model="@account" OnValidSubmit="HandleSave">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label>Account Name</label>
+        <InputText @bind-Value="account.Name" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label>Account Type</label>
+        <InputSelect @bind-Value="account.Type" class="form-control">
+            <option value="">-- Select Type --</option>
+            @foreach (var type in accountTypes)
+            {
+                <option value="@type">@type</option>
+            }
+        </InputSelect>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+    <button type="button" class="btn btn-secondary" @onclick='() => Nav.NavigateTo("/chart-of-accounts")'>Cancel</button>
+</EditForm>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private Account account = new();
+
+    // Standard Accounting Types
+    private string[] accountTypes = { "Asset", "Liability", "Equity", "Income", "Expense" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Id > 0)
+        {
+            // Edit Mode: Load existing data
+            account = await Http.GetFromJsonAsync<Account>($"api/Accounts/{Id}") ?? new();
+        }
+    }
+
+    private async Task HandleSave()
+    {
+        if (Id == 0)
+        {
+            // Create
+            await Http.PostAsJsonAsync("api/Accounts", account);
+        }
+        else
+        {
+            // Update
+            await Http.PutAsJsonAsync($"api/Accounts/{Id}", account);
+        }
+
+        Nav.NavigateTo("/chart-of-accounts");
+    }
+}

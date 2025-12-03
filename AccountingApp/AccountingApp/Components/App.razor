@@ -1,0 +1,30 @@
+﻿@* @rendermode  @(new InteractiveWebAssemblyRenderMode(prerender: false))  *@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="bootstrap/bootstrap.min.css" />
+    <!-- ADD THIS LINE FOR ICONS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="AccountingApp.styles.css" />
+    <link href="_content/Blazored.Toast/blazored-toast.min.css" rel="stylesheet" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    @* <HeadOutlet @rendermode="InteractiveWebAssembly" /> *@
+    <HeadOutlet @rendermode=@(new InteractiveWebAssemblyRenderMode(prerender: false)) />
+</head>
+
+<body>
+    @* <Routes @rendermode="InteractiveWebAssembly" /> *@
+    <Routes @rendermode=@(new InteractiveWebAssemblyRenderMode(prerender: false)) />
+     <!-- Add this component here so toasts can appear globally -->
+    <BlazoredToasts Position="ToastPosition.BottomRight" Timeout="5" />
+    
+    <script src="_framework/blazor.web.js"></script>
+</body>
+
+</html>

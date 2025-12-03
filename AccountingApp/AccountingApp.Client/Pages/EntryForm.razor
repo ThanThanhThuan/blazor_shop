@@ -1,0 +1,175 @@
+﻿@page "/entry/new"
+@page "/entry/edit/{Id:int}"
+@using AccountingApp.Shared.Models
+@using System.Net.Http.Headers
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<h3>@(Id == 0 ? "New Journal Entry" : "Edit Journal Entry")</h3>
+
+<EditForm Model="@entry" OnValidSubmit="HandleSave">
+    <DataAnnotationsValidator />
+
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <label>Date</label>
+            <InputDate @bind-Value="entry.Date" class="form-control" />
+        </div>
+        <div class="col-md-9">
+            <label>Description</label>
+            <InputText class="form-control" @bind-Value="entry.Description" />
+        </div>
+    </div>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Account</th>
+                <th>Debit</th>
+                <th>Credit</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var line in entry.Lines)
+            {
+                <tr>
+                    <td>
+                        <InputSelect class="form-control" @bind-Value="line.AccountId">
+                            <option value="0">-- Select --</option>
+                            @foreach (var acc in accounts)
+                            {
+                                <option value="@acc.Id">@acc.Name (@acc.Type)</option>
+                            }
+                        </InputSelect>
+                    </td>
+                    <td><InputNumber class="form-control" @bind-Value="line.Debit" /></td>
+                    <td><InputNumber class="form-control" @bind-Value="line.Credit" /></td>
+                    <td>
+                        <button type="button" class="btn btn-danger btn-sm" @onclick="() => RemoveLine(line)">X</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <button type="button" class="btn btn-secondary mb-3" @onclick="AddLine">Add Line</button>
+
+    <div class="alert alert-info">
+        <strong>Total Debit:</strong> @entry.Lines.Sum(x => x.Debit) |
+        <strong>Total Credit:</strong> @entry.Lines.Sum(x => x.Credit)
+    </div>
+
+    <!-- Existing Attachments List (Only in Edit Mode) -->
+    @if (Id > 0 && entry.Attachments.Count > 0)
+    {
+        <div class="mb-3">
+            <h5>Existing Attachments:</h5>
+            <ul>
+                @foreach (var att in entry.Attachments)
+                {
+                    <li>
+                        <a href="api/Attachments/@att.Id" target="_blank">@att.FileName</a>
+                        <!-- NOTE: Deleting individual attachments requires a new API endpoint.
+                             For now, we just list them. -->
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+
+    <!-- New File Upload -->
+    <div class="mb-3">
+        <label>Upload New Files</label>
+        <InputFile OnChange="OnInputFileChange" multiple class="form-control" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">@(Id == 0 ? "Post" : "Save Changes")</button>
+    <button type="button" class="btn btn-link" @onclick='() => Navigation.NavigateTo("/ledger")'>Cancel</button>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger mt-3">@errorMessage</div>
+    }
+</EditForm>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private JournalEntry entry = new JournalEntry();
+    private List<Account> accounts = new();
+    private string errorMessage = "";
+    private List<IBrowserFile> selectedFiles = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        accounts = await Http.GetFromJsonAsync<List<Account>>("api/JournalEntries/accounts") ?? new();
+
+        if (Id > 0)
+        {
+            // Edit Mode: Load existing
+            try
+            {
+                entry = await Http.GetFromJsonAsync<JournalEntry>($"api/JournalEntries/{Id}") ?? new();
+            }
+            catch
+            {
+                errorMessage = "Could not load entry.";
+            }
+        }
+        else
+        {
+            // New Mode: Init default lines
+            AddLine();
+            AddLine();
+        }
+    }
+
+    private void AddLine() => entry.Lines.Add(new JournalEntryLine());
+    private void RemoveLine(JournalEntryLine line) => entry.Lines.Remove(line);
+    private void OnInputFileChange(InputFileChangeEventArgs e) => selectedFiles = e.GetMultipleFiles().ToList();
+
+    private async Task HandleSave()
+    {
+        errorMessage = "";
+        HttpResponseMessage response;
+
+        if (Id == 0)
+        {
+            // Create
+            response = await Http.PostAsJsonAsync("api/JournalEntries", entry);
+        }
+        else
+        {
+            // Update
+            response = await Http.PutAsJsonAsync($"api/JournalEntries/{Id}", entry);
+        }
+
+        if (response.IsSuccessStatusCode)
+        {
+            // Handle File Uploads (Logic is same for Create or Edit)
+            int entryId = Id == 0
+                ? (await response.Content.ReadFromJsonAsync<JournalEntry>()).Id
+                : Id;
+
+            if (selectedFiles.Any())
+            {
+                using var content = new MultipartFormDataContent();
+                foreach (var file in selectedFiles)
+                {
+                    var fileContent = new StreamContent(file.OpenReadStream(1024 * 1024 * 10)); // 10MB
+                    fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+                    content.Add(fileContent, "files", file.Name);
+                }
+                await Http.PostAsync($"api/Attachments/upload/{entryId}", content);
+            }
+
+            Navigation.NavigateTo("/ledger");
+        }
+        else
+        {
+            errorMessage = await response.Content.ReadAsStringAsync();
+        }
+    }
+}

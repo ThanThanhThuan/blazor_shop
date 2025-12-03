@@ -1,0 +1,72 @@
+﻿@inherits LayoutComponentBase
+@using AccountingApp.Client.Services
+@implements IDisposable
+
+<div class="page">
+    <div class="sidebar @(navBarVisible ? "" : "collapsed")">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            <!-- Left Side Container: Holds Toggle Button + New Cart Icon -->
+            <div class="me-auto d-flex align-items-center">
+
+                <!-- 1. The Toggle Button -->
+                <button class="btn-toggle-nav me-3" @onclick="ToggleNavBar" title="Toggle Navigation">
+                    <span class="bi bi-list"></span>
+                </button>
+
+                <!-- 2. The New Cart Icon with Badge -->
+                <a href="cart" class="text-decoration-none text-dark position-relative me-3">
+                    <span class="bi bi-cart fs-4" aria-hidden="true"></span>
+
+                    @if (State.TotalCount > 0)
+                    {
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                              style="font-size: 0.75rem;">
+                            @State.TotalCount
+                            <span class="visually-hidden">items in cart</span>
+                        </span>
+                    }
+                </a>
+
+            </div>
+
+            <!-- Right Side: Existing Links -->
+            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code {
+    [CascadingParameter] public CartState State { get; set; } = null!;
+    private bool navBarVisible = true;
+
+    protected override void OnInitialized()
+    {
+        // Subscribe to changes so the top badge updates instantly
+        if (State != null)
+        {
+            State.OnChange += StateHasChanged;
+        }
+    }
+
+    private void ToggleNavBar()
+    {
+        navBarVisible = !navBarVisible;
+    }
+
+    public void Dispose()
+    {
+        // Unsubscribe to prevent memory leaks
+        if (State != null)
+        {
+            State.OnChange -= StateHasChanged;
+        }
+    }
+}

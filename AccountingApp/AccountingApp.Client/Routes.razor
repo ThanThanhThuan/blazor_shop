@@ -1,0 +1,19 @@
+﻿@using AccountingApp.Client.Services
+@inject CartState CartState
+
+<CascadingValue Value="CartState">
+<Router AppAssembly="typeof(Program).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+</Router>
+</CascadingValue>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        // Load cart data from LocalStorage when the app boots up
+        await CartState.InitializeAsync();
+    }
+}

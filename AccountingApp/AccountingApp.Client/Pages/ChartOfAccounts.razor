@@ -1,0 +1,91 @@
+@page "/chart-of-accounts"
+@using AccountingApp.Shared.Models
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>Chart of Accounts</h3>
+    <a href="account/new" class="btn btn-primary">+ New Account</a>
+</div>
+
+@if (groupedAccounts == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    @foreach (var group in groupedAccounts)
+    {
+        <div class="card mb-3">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">@group.Key</h5>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <tbody>
+                        @foreach (var acc in group)
+                        {
+                            <tr>
+                                <td style="width: 70%">@acc.Name</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary me-2"
+                                            @onclick="@( () => Nav.NavigateTo($"/account/edit/{acc.Id}") )">
+                                        Edit
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            @onclick="() => DeleteAccount(acc)">
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private List<Account> allAccounts = new();
+    // Dictionary to hold grouped data: "Asset" -> [Cash, Bank], "Liability" -> [Payable]
+    private IEnumerable<IGrouping<string, Account>>? groupedAccounts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAccounts();
+    }
+
+    private async Task LoadAccounts()
+    {
+        allAccounts = await Http.GetFromJsonAsync<List<Account>>("api/Accounts") ?? new();
+        
+        // Define specific order for accounting types
+        var order = new List<string> { "Asset", "Liability", "Equity", "Income", "Expense" };
+
+        groupedAccounts = allAccounts
+            .OrderBy(a => order.IndexOf(a.Type)) // Sort groups logically
+            .ThenBy(a => a.Name)                 // Sort accounts alphabetically
+            .GroupBy(a => a.Type);
+    }
+
+    private async Task DeleteAccount(Account acc)
+    {
+        bool confirmed = await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete '{acc.Name}'?");
+        if (confirmed)
+        {
+            var response = await Http.DeleteAsync($"api/Accounts/{acc.Id}");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadAccounts(); // Refresh list
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                await JS.InvokeVoidAsync("alert", "Error: " + error);
+            }
+        }
+    }
+}
